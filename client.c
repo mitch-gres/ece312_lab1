@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #define SERVER_PORT 710
 #define MAX_LINE 256
 
@@ -19,6 +22,10 @@ main(int argc, char * argv[]){
   char buf[MAX_LINE];
   int s;
   int len;
+  
+	int fd;
+	char * myfifo = "/tmp/myfifo";
+	char buf_fifo[MAX_LINE];
 
   if (argc==2) {
     host = argv[1];
@@ -52,10 +59,17 @@ main(int argc, char * argv[]){
     close(s);
     exit(1);
   }
+	
+	fd = open(myfifo, O_RDONLY);
   /* main loop: get and send lines of text */
   while (fgets(buf, sizeof(buf), stdin)) {
     buf[MAX_LINE-1] = '\0';
     len = strlen(buf) + 1;
     send(s, buf, len, 0);
+	
+		
+		read(fd, buf_fifo, MAX_LINE);
+		printf("Received: %s\n", buf_fifo);
   }
+	close(fd);
 }
