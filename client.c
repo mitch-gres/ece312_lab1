@@ -13,11 +13,11 @@
 #define SERVER_PORT 710
 #define MAX_LINE 256
 
-#define SOH 0x01;
-#define STX 0x02;
-#define ETX 0x03;
-#define LF 0x0A;
-#define CR 0x0D;
+#define SOH 0x01
+#define STX 0x02
+#define ETX 0x03
+#define LF 0x0A
+#define CR 0x0D
 
 // Types of messages that can be sent between client and server. 
 enum msg_type {
