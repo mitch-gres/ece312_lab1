@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 
 #define SERVER_PORT 710
-#define MAX_LINE 256
+#define MAX_LINE 512
 
 #define SOH 1
 #define LF 10
@@ -49,8 +49,7 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
   return msg;
 }
 
-int
-main(int argc, char * argv[]){
+int main(int argc, char * argv[]){
   FILE *fp;
   struct hostent *hp;
   struct sockaddr_in sin;

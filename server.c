@@ -10,9 +10,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define SERVER_PORT  710
-#define MAX_PENDING  5
-#define MAX_LINE     256
+#define SERVER_PORT		710
+#define MAX_PENDING		5
+#define MAX_LINE		512
 
 int main(){
 	struct sockaddr_in sin;
