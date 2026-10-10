@@ -41,6 +41,7 @@ int main(){
 	}
 	listen(s, MAX_PENDING);
 	
+	// FIFO that provides shared memory between the server and client. 
 	mkfifo(myfifo, 0666);
 	fd = open(myfifo, O_WRONLY);
 
