@@ -13,6 +13,58 @@
 #define SERVER_PORT 710
 #define MAX_LINE 256
 
+#define SOH 0x01;
+#define STX 0x02;
+#define ETX 0x03;
+#define LF 0x0A;
+#define CR 0x0D;
+
+// Types of messages that can be sent between client and server. 
+enum msg_type {
+  INTRODUCTION_MSG = 1,
+  CHAT_MSG = 2,
+  PROBE_MSG = 3,
+  NAME_CHANGE_MSG = 4,
+  GOODBYE_MSG = 5,
+  ACK_MSG = 6
+};
+
+#define MAX_NAME_LEN 100
+#define MAX_MSG_LEN 256
+typdef struct {
+  const char soh_0;
+  const char stx_0;
+  uint8_t sequence_number;
+  const char etx_0;
+  enum msg_type type;
+  const char stx_1;
+  char name[MAX_NAME_LEN];
+  const char etx_1;
+  const char stx_2;
+  char message[MAX_MSG_LEN];
+  const char etx_2;
+  const char cr;
+  const char lf;
+} message_t;
+
+message_t create_message(enum msg_type type, const char *name, const char *message, uint8_t sequence_number) {
+  message_t msg;
+  msg.soh_0 = SOH;
+  msg.stx_0 = STX;
+  msg.sequence_number = sequence_number;
+  msg.etx_0 = ETX;
+  msg.type = type;
+  msg.stx_1 = STX;
+  strncpy(msg.name, name, MAX_NAME_LEN);
+  msg.etx_1 = ETX;
+  msg.stx_2 = STX;
+  strncpy(msg.message, message, MAX_MSG_LEN);
+  msg.etx_2 = ETX;
+  msg.cr = CR;
+  msg.lf = LF;
+  return msg;
+}
+
 int
 main(int argc, char * argv[]){
   FILE *fp;
