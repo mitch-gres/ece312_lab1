@@ -13,11 +13,9 @@
 #define SERVER_PORT 710
 #define MAX_LINE 256
 
-#define SOH 0x01
-#define STX 0x02
-#define ETX 0x03
-#define LF 0x0A
-#define CR 0x0D
+#define SOH 1
+#define LF 10
+#define CR 13
 
 // Types of messages that can be sent between client and server. 
 const char INTRODUCTION_MSG = 1;
@@ -30,22 +28,22 @@ const char  ACK_MSG = 6;
 #define MAX_NAME_LEN 100
 #define MAX_MSG_LEN 256
 typedef struct {
-  char SOH;
+  char soh;
   uint32_t sequence_number;
-  char msg_type type;
+  char msg_type;
   char name[MAX_NAME_LEN];
   char body[MAX_MSG_LEN];
-  char CR;
-  char LF;
+  char cr;
+  char lf;
 } message_t;
 
-message_t create_message(enum msg_type type, const char *name, const char *body, uint8_t sequence_number) {
+message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number) {
   message_t msg;
-  msg.SOH = SOH;
+  msg.soh = SOH;
   msg.sequence_number = sequence_number;
-  msg.msg_type = type;
-  msg.CR = CR;
-  msg.LF = LF;
+  msg.msg_type = msg_type;
+  msg.cr = CR;
+  msg.lf = LF;
   strncpy(msg.name, name, MAX_NAME_LEN);
   strncpy(msg.body, body, MAX_MSG_LEN);
   return msg;
