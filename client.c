@@ -18,19 +18,19 @@
 #define CR 13
 
 // Types of messages that can be sent between client and server. 
-const char INTRODUCTION_MSG = 1;
-const char  CHAT_MSG = 2;
-const char  PROBE_MSG = 3;
-const char  NAME_CHANGE_MSG = 4;
-const char  GOODBYE_MSG = 5;
-const char  ACK_MSG = 6;
+#define INTRODUCTION_MSG 1
+#define CHAT_MSG 2
+#define PROBE_MSG 3
+#define NAME_CHANGE_MSG 4
+#define GOODBYE_MSG 5
+#define ACK_MSG 6
 
 #define MAX_NAME_LEN 100
 #define MAX_MSG_LEN 256
 typedef struct {
   char soh;
   uint32_t sequence_number;
-  char msg_type;
+  uint8_t msg_type;
   char name[MAX_NAME_LEN];
   char body[MAX_MSG_LEN];
   char cr;
@@ -46,6 +46,12 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
   msg.lf = LF;
   strncpy(msg.name, name, MAX_NAME_LEN);
   strncpy(msg.body, body, MAX_MSG_LEN);
+  return msg;
+}
+
+message_t get_message_from_buffer(const char *buffer) {
+  message_t msg;
+  memcpy(&msg, buffer, sizeof(message_t));
   return msg;
 }
 
@@ -97,22 +103,51 @@ int main(int argc, char * argv[]){
 	
 	fd = open(myfifo, O_RDONLY);
   /* main loop: get and send lines of text */
-  while (fgets(buf, sizeof(buf), stdin)) {
-    buf[MAX_LINE-1] = '\0';
-    len = strlen(buf) + 1;
-    send(s, buf, len, 0);
-	
-		
-		read(fd, buf_fifo, MAX_LINE);
-		printf("Received: %s\n", buf_fifo);
 
-    // // We have the buf_fifo, we'll convert into a message_t struct.
-    // message_t msg;
-    // memcpy(&msg, buf_fifo, sizeof(message_t));
-    // printf("Message Type: %d\n", msg.msg_type);
-    // printf("Sequence Number: %d\n", msg.sequence_number);
-    // printf("Name: %s\n", msg.name);
-    // printf("Body: %s\n", msg.body);
+  char name[MAX_NAME_LEN];
+  fprintf(stderr, "Enter Name: ");
+  fgets(name, sizeof(name), stdin);
+
+  // We'll make all messages chat messages for now, then change them to the appropriate type later.
+
+  while (true) {
+    fprintf(stderr, "Begin Chat...\n");
+    fgets(buf, sizeof(buf), stdin);
+
+    // Check to make sure the length of the message that we just sent is less than the maximum message length. If it is, then we can send it. If not, then we need to truncate it and send it.
+    if (strlen(buf) > MAX_MSG_LEN) {
+      exit(1); // Kill it. Not the best strategy, but it works for now.
+    }
+
+    message_t tx_msg = create_message(CHAT_MSG, name, buf, 0);
+    send(s, &tx_msg, sizeof(tx_msg), 0);
+
+    read(fd, buf_fifo, MAX_LINE);
+
+    message_t rx_msg = get_message_from_buffer(buf_fifo);
+    switch(rx_msg.msg_type) {
+      case INTRODUCTION_MSG:
+        fprintf(stderr, "Received Introduction from %s. \n\r", rx_msg.name);
+        break;
+      case CHAT_MSG:
+        fprintf(stderr, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+        break;
+      case PROBE_MSG:
+        fprintf(stderr, "Received Probe from %s.\r\n", rx_msg.name);
+        break;
+      case NAME_CHANGE_MSG:
+        fprintf(stderr, "Received Name Change from %s.\r\n", rx_msg.name);
+        break;
+      case GOODBYE_MSG:
+        fprintf(stderr, "Received Goodbye from %s.\r\n", rx_msg.name);
+        break;
+      case ACK_MSG:
+        fprintf(stderr, "Received ACK from %s.\r\n", rx_msg.name);
+        break;
+      default:
+        fprintf(stderr, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
+    }
+
   }
 	close(fd);
 }
