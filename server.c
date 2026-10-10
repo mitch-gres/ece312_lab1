@@ -12,8 +12,7 @@
 #define MAX_LINE     256
 
 int
-main()
-{
+main(){
   struct sockaddr_in sin;
   char buf[MAX_LINE];
   int buf_len;
