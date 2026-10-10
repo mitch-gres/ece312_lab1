@@ -31,7 +31,7 @@ enum msg_type {
 
 #define MAX_NAME_LEN 100
 #define MAX_MSG_LEN 256
-typdef struct {
+typedef struct {
   const char soh_0;
   const char stx_0;
   uint8_t sequence_number;
