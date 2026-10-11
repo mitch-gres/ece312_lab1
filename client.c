@@ -29,25 +29,25 @@ const char  ACK_MSG = 6;
 #define MAX_NAME_LEN 100
 #define MAX_MSG_LEN 256
 typedef struct {
-  char soh;
-  uint32_t sequence_number;
-  char msg_type;
-  char name[MAX_NAME_LEN];
-  char body[MAX_MSG_LEN];
-  char cr;
-  char lf;
+	char soh;
+	uint32_t sequence_number;
+	char msg_type;
+	char name[MAX_NAME_LEN];
+	char body[MAX_MSG_LEN];
+	char cr;
+	char lf;
 } message_t;
 
 message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number) {
-  message_t msg;
-  msg.soh = SOH;
-  msg.sequence_number = sequence_number;
-  msg.msg_type = msg_type;
-  msg.cr = CR;
-  msg.lf = LF;
-  strncpy(msg.name, name, MAX_NAME_LEN);
-  strncpy(msg.body, body, MAX_MSG_LEN);
-  return msg;
+	message_t msg;
+	msg.soh = SOH;
+	msg.sequence_number = sequence_number;
+	msg.msg_type = msg_type;
+	msg.cr = CR;
+	msg.lf = LF;
+	strncpy(msg.name, name, MAX_NAME_LEN);
+	strncpy(msg.body, body, MAX_MSG_LEN);
+	return msg;
 }
 
 void* foo(void* arg){
@@ -67,51 +67,50 @@ void* foo(void* arg){
 
 
 int main(int argc, char * argv[]){
-  FILE *fp;
-  struct hostent *hp;
-  struct sockaddr_in sin;
-  char *host;
-  char buf[MAX_LINE];
-  int s;
-  int len;
+	FILE *fp;
+	struct hostent *hp;
+	struct sockaddr_in sin;
+	char *host;
+	char buf[MAX_LINE];
+	int s;
+	int len;
 	
 	//int fd;
 	//char * myfifo = "/tmp/myfifo";
 	//char buf_fifo[MAX_LINE];
 
-  if (argc==2) {
-    host = argv[1];
-  }
-  else {
-    fprintf(stderr, "usage: simplex-talk host\n");
-    exit(1);
-  }
+	if (argc==2) {
+		host = argv[1];
+	}
+	else {
+		fprintf(stderr, "usage: simplex-talk host\n");
+		exit(1);
+	}
 
-  /* translate host name into peer's IP address */
-  hp = gethostbyname(host);
-  if (!hp) {
-    fprintf(stderr, "simplex-talk: unknown host: %s\n", host);
-    exit(1);
-  }
+	/* translate host name into peer's IP address */
+	hp = gethostbyname(host);
+	if (!hp) {
+		fprintf(stderr, "simplex-talk: unknown host: %s\n", host);
+		exit(1);
+	}
 
-  /* build address data structure */
-  bzero((char *)&sin, sizeof(sin));
-  sin.sin_family = AF_INET;
-  bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
-  sin.sin_port = htons(SERVER_PORT);
+	/* build address data structure */
+	bzero((char *)&sin, sizeof(sin));
+	sin.sin_family = AF_INET;
+	bcopy(hp->h_addr, (char *)&sin.sin_addr, hp->h_length);
+	sin.sin_port = htons(SERVER_PORT);
 
-  /* active open */
-  if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    perror("simplex-talk: socket");
-    exit(1);
-  }
-  if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-  {
-    perror("simplex-talk: connect");
-    close(s);
-    exit(1);
-  }
-	
+	/* active open */
+	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("simplex-talk: socket");
+		exit(1);
+		}
+	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0){
+		perror("simplex-talk: connect");
+		close(s);
+		exit(1);
+	}
+
 	//fd = open(myfifo, O_RDONLY);
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
