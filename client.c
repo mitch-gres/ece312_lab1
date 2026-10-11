@@ -9,6 +9,7 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <pthread.h>
 
 #define SERVER_PORT 710
 #define MAX_LINE 512
@@ -49,6 +50,22 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
   return msg;
 }
 
+void* foo(void* arg){
+	int fd;
+	char * myfifo = "/tmp/myfifo";
+	char buf_fifo[MAX_LINE];
+	
+	
+	while(1){
+		fd = open(myfifo, O_RDONLY);
+		read(fd, buf_fifo, MAX_LINE);
+		printf("Received: %s\n", buf_fifo);
+		close(fd);
+	}
+	
+}
+
+
 int main(int argc, char * argv[]){
   FILE *fp;
   struct hostent *hp;
@@ -57,10 +74,10 @@ int main(int argc, char * argv[]){
   char buf[MAX_LINE];
   int s;
   int len;
-  
-	int fd;
-	char * myfifo = "/tmp/myfifo";
-	char buf_fifo[MAX_LINE];
+	
+	//int fd;
+	//char * myfifo = "/tmp/myfifo";
+	//char buf_fifo[MAX_LINE];
 
   if (argc==2) {
     host = argv[1];
@@ -95,16 +112,17 @@ int main(int argc, char * argv[]){
     exit(1);
   }
 	
-	fd = open(myfifo, O_RDONLY);
-  /* main loop: get and send lines of text */
-  while (fgets(buf, sizeof(buf), stdin)) {
-    buf[MAX_LINE-1] = '\0';
-    len = strlen(buf) + 1;
-    send(s, buf, len, 0);
-	
-		
-		read(fd, buf_fifo, MAX_LINE);
-		printf("Received: %s\n", buf_fifo);
-  }
-	close(fd);
+	//fd = open(myfifo, O_RDONLY);
+	pthread_t thread;
+	pthread_create(&thread, NULL, foo, NULL);
+	/* main loop: get and send lines of text */
+	while (1) {
+		if(fgets(buf, sizeof(buf), stdin)){
+			buf[MAX_LINE-1] = '\0';
+			len = strlen(buf) + 1;
+			send(s, buf, len, 0);
+		}
+	}
+	pthread_join(thread, NULL);
+	//close(fd);
 }
