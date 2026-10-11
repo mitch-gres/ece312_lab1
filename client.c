@@ -122,6 +122,13 @@ int main(int argc, char * argv[]){
 			len = strlen(buf) + 1;
 			send(s, buf, len, 0);
 		}
+		// // We have the buf_fifo, we'll convert into a message_t struct.
+		// message_t msg;
+		// memcpy(&msg, buf_fifo, sizeof(message_t));
+		// printf("Message Type: %d\n", msg.msg_type);
+		// printf("Sequence Number: %d\n", msg.sequence_number);
+		// printf("Name: %s\n", msg.name);
+		// printf("Body: %s\n", msg.body);
 	}
 	pthread_join(thread, NULL);
 	//close(fd);
