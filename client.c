@@ -51,18 +51,25 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
 }
 
 void* foo(void* arg){
-	int fd;
-	char * myfifo = "/tmp/myfifo";
-	char buf_fifo[MAX_LINE];
-	
-	
-	while(1){
-		fd = open(myfifo, O_RDONLY);
-		read(fd, buf_fifo, MAX_LINE);
-		printf("Received: %s\n", buf_fifo);
-		close(fd);
+	char buf[MAX_LINE];
+	int fd = open("/tmp/myfifo", O_RDONLY);
+
+	if (fd == -1) {
+		perror("open");
+		return NULL;
 	}
-	
+
+	ssize_t n;
+	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+		fwrite(buf, 1, n, stdout);
+		fflush(stdout);
+	}
+
+	if (n < 0)
+		perror("read");
+
+	close(fd);
+	return NULL;
 }
 
 
@@ -121,6 +128,7 @@ int main(int argc, char * argv[]){
 			len = strlen(buf) + 1;
 			send(s, buf, len, 0);
 		}
+		
 		// // We have the buf_fifo, we'll convert into a message_t struct.
 		// message_t msg;
 		// memcpy(&msg, buf_fifo, sizeof(message_t));

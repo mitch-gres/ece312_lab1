@@ -47,14 +47,19 @@ int main(){
 
 	/* wait for connection, then receive and print text */
 	while(1) {
+		addr_len = sizeof(sin);
 		if ((new_s = accept(s, (struct sockaddr *)&sin, &addr_len)) < 0) {
 			perror("simplex-talk: accept");
 			exit(1);
 		}
-		while (buf_len = recv(new_s, buf, sizeof(buf), 0)){
-			//fputs(buf, stdout);
-			write(fd, buf, sizeof(buf));
+		while ((buf_len = recv(new_s, buf, sizeof(buf), 0)) > 0) {
+			if (write(fd, buf, buf_len) == -1) {
+				perror("write");
+				break;
+			}
 		}
+		if (buf_len < 0)
+		perror("recv");
 		close(new_s);
 	}
 	close(fd);
