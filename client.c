@@ -305,6 +305,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
 			// Doesn't matter because we die regardless. :((
 			break;
+		case GOODBYE_ACK: 
+			message_t goodbye_ack_msg = create_message(GOODBYE_ACK, username, "", 1);
+			send(s, &goodbye_ack_msg, sizeof(message_t), 0);
+			break;
 		default:
 			break;
 		}
