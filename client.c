@@ -54,11 +54,11 @@ message_t get_message_from_buffer(const char *buffer) {
 	message_t msg;
 	memcpy(&msg, buffer, sizeof(message_t));
 
-  if (msg.soh != SOH || msg.cr != CR || msg.lf != LF) {
-    fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
-    msg.soh = 0xFF; // Indicates an invalid message. 
-  }
-return msg;
+	if (msg.soh != SOH || msg.cr != CR || msg.lf != LF) {
+		fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
+		msg.soh = 0xFF; // Indicates an invalid message. 
+	}
+	return msg;
 }
 
 void* foo(void* arg){
