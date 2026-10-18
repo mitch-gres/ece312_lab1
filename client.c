@@ -19,7 +19,7 @@
 #define LF 10
 #define CR 13
 
-// Types of messages that can be sent between client and server. 
+// Types of messages that can be sent between client and server.
 #define INTRODUCTION_MSG 1
 #define CHAT_MSG 2
 #define PROBE_MSG 3
@@ -29,7 +29,7 @@
 
 // Define the states of our state machine for the client.
 // There are more states defined in the state machine diagram that
-// we created but they're outside of this program. 
+// we created but they're outside of this program.
 #define INIT 1
 #define NAME 2
 #define INTRO_ACK 4
@@ -49,6 +49,7 @@
 
 #define TIMEOUT_SECONDS 5
 
+
 typedef struct {
 	char soh;
 	uint32_t sequence_number;
@@ -59,8 +60,8 @@ typedef struct {
 	char lf;
 } message_t;
 
-
-message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number) {
+message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number)
+{
 	message_t msg;
 	msg.soh = SOH;
 	msg.sequence_number = sequence_number;
@@ -72,7 +73,8 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
 	return msg;
 }
 
-message_t get_message_from_buffer(const char *buffer) {
+message_t get_message_from_buffer(const char *buffer)
+{
 	message_t msg;
 	memcpy(&msg, buffer, sizeof(message_t));
 
@@ -83,22 +85,19 @@ message_t get_message_from_buffer(const char *buffer) {
 	return msg;
 }
 
-void* foo(void* arg){
+void *foo(void *arg)
+{
 	char buf[MAX_LINE];
 	int fd = open("/tmp/myfifo", O_RDONLY);
-	
 
-	if (fd == -1) {
+	if (fd == -1){
 		perror("open");
 		return NULL;
 	}
 
-  // TODO: Make this something that's entered by the person on start. 
-  // Assume we've read in their username, well in this case I'm assuming number 
-  // so from there we'll use that. Don't use a number Mitchell. Just ask for text. 
 	ssize_t n;
 
-	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+	while ((n = read(fd, buf, sizeof(buf))) > 0){
 		message_t rx_msg = get_message_from_buffer(buf);
 		if (rx_msg.soh != 0xFF) {
 			switch(rx_msg.msg_type) {
@@ -137,8 +136,7 @@ void* foo(void* arg){
 	return NULL;
 }
 
-
-int main(int argc, char * argv[]){
+int main(int argc, char *argv[]){
 	FILE *fp;
 	struct hostent *hp;
 	struct sockaddr_in sin;
@@ -147,9 +145,9 @@ int main(int argc, char * argv[]){
 	char rx_buf[MAX_LINE];
 	int s;
 	int len;
-	
+
 	int fd;
-	char * myfifo = "/tmp/myfifo";
+	char *myfifo = "/tmp/myfifo";
 	char buf_fifo[MAX_LINE];
 	int state = 0;
 	
@@ -157,9 +155,9 @@ int main(int argc, char * argv[]){
 	uint32_t seq_num = 0;
 	
 	gethostname(me_host, 20);
-	
 	fd = open(myfifo, O_RDONLY);
-	if (fd == -1) {
+	
+	if (fd == -1){
 		perror("open");
 	}
 	char name[MAX_NAME_LEN];
@@ -168,7 +166,7 @@ int main(int argc, char * argv[]){
 	fgets(name, sizeof(name), stdin);
 	state = 1;
 	name[strcspn(name, "\n")] = 0;
-	
+
 	state = 2;
 	fprintf(stdout, "Enter hostname (IPv4 address) of target or ! to wait for introduction: ");
 	fflush(stdout);
@@ -176,8 +174,8 @@ int main(int argc, char * argv[]){
 	fgets(hostbuff, sizeof(hostbuff), stdin);
 	hostbuff[strcspn(hostbuff, "\n")] = 0;
 	strncpy(host, hostbuff, 20);
-	
-	if(hostbuff[0] == '!'){
+
+	if (hostbuff[0] == '!'){
 		state = 4;
 		ssize_t n;
 		while ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
@@ -191,18 +189,18 @@ int main(int argc, char * argv[]){
 	}else{
 		state = 3;
 	}
-	
-//	if (argc==2) {
-//		host = argv[1];
-//	}
-//	else {
-//		fprintf(stderr, "usage: simplex-talk host\n");
-//		exit(1);
-//	}
+
+	//	if (argc==2) {
+	//		host = argv[1];
+	//	}
+	//	else {
+	//		fprintf(stderr, "usage: simplex-talk host\n");
+	//		exit(1);
+	//	}
 
 	/* translate host name into peer's IP address */
 	hp = gethostbyname(host);
-	if (!hp) {
+	if (!hp){
 		printf("host: %s\n", host);
 		fprintf(stderr, "simplex-talk: unknown host: %s\n", host);
 		exit(1);
@@ -215,17 +213,16 @@ int main(int argc, char * argv[]){
 	sin.sin_port = htons(SERVER_PORT);
 
 	/* active open */
-	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0){
 		perror("simplex-talk: socket");
 		exit(1);
-		}
+	}
 	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0){
 		perror("simplex-talk: connect");
 		close(s);
 		exit(1);
 	}
 
-	
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
 	/* main loop: get and send lines of text */
@@ -255,17 +252,42 @@ int main(int argc, char * argv[]){
 						}
 					}
 				}
-				if (state != CHAT) {
+				if (state != CHAT){
 					fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
 				}
 				break;
+			case GOODBYE_WAIT:
+				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
+				message_t goodbye_msg = create_message(GOODBYE_MSG, username, "", 1);
+				send(s, &goodbye_msg, sizeof(message_t), 0);
+
+				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
+
+				time_t goodbye_start_time = time(NULL);
+				while (time(NULL) - goodbye_start_time < TIMEOUT_SECONDS){
+					message_t msg;
+					memcpy(&msg, buf_fifo, sizeof(message_t));
+					if (msg.msg_type == GOODBYE_ACK){
+						fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
+						break;
+					}
+				}
+				fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
+				// Doesn't matter because we die regardless. :((
+				break;
+			case GOODBYE_ACK: 
+				message_t goodbye_ack_msg = create_message(GOODBYE_ACK, username, "", 1);
+				send(s, &goodbye_ack_msg, sizeof(message_t), 0);
+				break;
+			default:
+				break;
 		}
+		if (current_state == GOODBYE_WAIT || current_state == GOODBYE_ACK) break;
 //		if(fgets(tx_buf, sizeof(tx_buf), stdin)){
 //			tx_buf[MAX_LINE-1] = '\0';
 //			len = strlen(tx_buf) + 1;
 //			send(s, tx_buf, len, 0);
 //		}
-		
 		// // We have the buf_fifo, we'll convert into a message_t struct.
 		// message_t msg;
 		// memcpy(&msg, buf_fifo, sizeof(message_t));
