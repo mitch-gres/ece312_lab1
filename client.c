@@ -56,7 +56,7 @@ message_t get_message_from_buffer(const char *buffer) {
 
   if (msg.soh != SOH || msg.cr != CR || msg.lf != LF) {
     fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
-    return NULL;
+    msg.soh = 0xFF; // Indicates an invalid message. 
   }
 return msg;
 }
@@ -74,7 +74,7 @@ void* foo(void* arg){
 	ssize_t n;
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		message_t rx_msg = get_message_from_buffer(buf);
-    if (rx_msg != NULL) {
+    if (rx_msg.soh != 0xFF) {
       switch(rx_msg.msg_type) {
         case INTRODUCTION_MSG:
           fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
@@ -98,8 +98,8 @@ void* foo(void* arg){
           fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
 	    }
     }
-    else if (rx_msg == NULL) {
-      fprintf(stderr, "Message Received is NULL. Invalid message format.\r\n");
+    else if (rx_msg.soh == 0xFF) {
+      fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
     }
 		//fwrite(buf, 1, n, stdout);
 		fflush(stdout);
