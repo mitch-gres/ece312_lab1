@@ -19,7 +19,7 @@
 #define LF 10
 #define CR 13
 
-// Types of messages that can be sent between client and server. 
+// Types of messages that can be sent between client and server.
 #define INTRODUCTION_MSG 1
 #define CHAT_MSG 2
 #define PROBE_MSG 3
@@ -29,7 +29,7 @@
 
 // Define the states of our state machine for the client.
 // There are more states defined in the state machine diagram that
-// we created but they're outside of this program. 
+// we created but they're outside of this program.
 #define INIT 1
 #define NAME 2
 #define INTRO_ACK 3
@@ -51,7 +51,8 @@
 
 uint8_t current_state = INIT;
 
-typedef struct {
+typedef struct
+{
 	char soh;
 	uint32_t sequence_number;
 	uint8_t msg_type;
@@ -61,8 +62,8 @@ typedef struct {
 	char lf;
 } message_t;
 
-
-message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number) {
+message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number)
+{
 	message_t msg;
 	msg.soh = SOH;
 	msg.sequence_number = sequence_number;
@@ -74,65 +75,72 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
 	return msg;
 }
 
-message_t get_message_from_buffer(const char *buffer) {
+message_t get_message_from_buffer(const char *buffer)
+{
 	message_t msg;
 	memcpy(&msg, buffer, sizeof(message_t));
 
-  if (msg.soh != SOH || msg.cr != CR || msg.lf != LF) {
-    fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
-    msg.soh = 0xFF; // Indicates an invalid message. 
-  }
-return msg;
+	if (msg.soh != SOH || msg.cr != CR || msg.lf != LF)
+	{
+		fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
+		msg.soh = 0xFF; // Indicates an invalid message.
+	}
+	return msg;
 }
 
-void* foo(void* arg){
+void *foo(void *arg)
+{
 	char buf[MAX_LINE];
 	int fd = open("/tmp/myfifo", O_RDONLY);
-	
 
-	if (fd == -1) {
+	if (fd == -1)
+	{
 		perror("open");
 		return NULL;
 	}
 
-  // TODO: Make this something that's entered by the person on start. 
-  // Assume we've read in their username, well in this case I'm assuming number 
-  // so from there we'll use that. Don't use a number Mitchell. Just ask for text. 
-  current_state = NAME;
-  char username[MAX_NAME_LEN] = {0};
+	// TODO: Make this something that's entered by the person on start.
+	// Assume we've read in their username, well in this case I'm assuming number
+	// so from there we'll use that. Don't use a number Mitchell. Just ask for text.
+	current_state = NAME;
+	char username[MAX_NAME_LEN] = {0};
 
 	ssize_t n;
 
-	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+	while ((n = read(fd, buf, sizeof(buf))) > 0)
+	{
 		message_t rx_msg = get_message_from_buffer(buf);
-    if (rx_msg.soh != 0xFF) {
-      switch(rx_msg.msg_type) {
-        case INTRODUCTION_MSG:
-          fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
-          break;
-        case CHAT_MSG:
-          fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
-          break;
-        case PROBE_MSG:
-          fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
-          break;
-        case NAME_CHANGE_MSG:
-          fprintf(stdout, "Received Name Change from %s.\r\n", rx_msg.name);
-          break;
-        case GOODBYE_MSG:
-          fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
-          break;
-        case ACK_MSG:
-          fprintf(stdout, "Received ACK from %s.\r\n", rx_msg.name);
-          break;
-        default:
-          fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
-	    }
-    }
-    else if (rx_msg.soh == 0xFF) {
-      fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
-    }
-		//fwrite(buf, 1, n, stdout);
+		if (rx_msg.soh != 0xFF)
+		{
+			switch (rx_msg.msg_type)
+			{
+			case INTRODUCTION_MSG:
+				fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
+				break;
+			case CHAT_MSG:
+				fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+				break;
+			case PROBE_MSG:
+				fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
+				break;
+			case NAME_CHANGE_MSG:
+				fprintf(stdout, "Received Name Change from %s.\r\n", rx_msg.name);
+				break;
+			case GOODBYE_MSG:
+				fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
+				break;
+			case ACK_MSG:
+				fprintf(stdout, "Received ACK from %s.\r\n", rx_msg.name);
+				break;
+			default:
+				fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
+			}
+		}
+		else if (rx_msg.soh == 0xFF)
+		{
+			fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
+		}
+		// fwrite(buf, 1, n, stdout);
 		fflush(stdout);
 	}
 
@@ -143,8 +151,8 @@ void* foo(void* arg){
 	return NULL;
 }
 
-
-int main(int argc, char * argv[]){
+int main(int argc, char *argv[])
+{
 	FILE *fp;
 	struct hostent *hp;
 	struct sockaddr_in sin;
@@ -152,14 +160,15 @@ int main(int argc, char * argv[]){
 	char buf[MAX_LINE];
 	int s;
 	int len;
-	
+
 	int fd;
-	char * myfifo = "/tmp/myfifo";
+	char *myfifo = "/tmp/myfifo";
 	char buf_fifo[MAX_LINE];
 	int state = 0;
-	
+
 	fd = open(myfifo, O_RDONLY);
-	if (fd == -1) {
+	if (fd == -1)
+	{
 		perror("open");
 	}
 	char name[MAX_NAME_LEN];
@@ -168,7 +177,7 @@ int main(int argc, char * argv[]){
 	fgets(name, sizeof(name), stdin);
 	state = 1;
 	name[strcspn(name, "\n")] = 0;
-	
+
 	state = 2;
 	fprintf(stdout, "Enter hostname (IPv4 address) of target or ! to wait for introduction: ");
 	fflush(stdout);
@@ -176,33 +185,39 @@ int main(int argc, char * argv[]){
 	fgets(hostbuff, sizeof(hostbuff), stdin);
 	hostbuff[strcspn(hostbuff, "\n")] = 0;
 	strncpy(host, hostbuff, 20);
-	
-	if(hostbuff[0] == '!'){
+
+	if (hostbuff[0] == '!')
+	{
 		state = 4;
 		ssize_t n;
-		while ((n = read(fd, buf, sizeof(buf))) > 0) {
+		while ((n = read(fd, buf, sizeof(buf))) > 0)
+		{
 			message_t rx_msg = get_message_from_buffer(buf);
-			if(rx_msg.msg_type == INTRODUCTION_MSG){
+			if (rx_msg.msg_type == INTRODUCTION_MSG)
+			{
 				host = rx_msg.body;
 				fflush(stdout);
 				break;
 			}
 		}
-	}else{
+	}
+	else
+	{
 		state = 3;
 	}
-	
-//	if (argc==2) {
-//		host = argv[1];
-//	}
-//	else {
-//		fprintf(stderr, "usage: simplex-talk host\n");
-//		exit(1);
-//	}
+
+	//	if (argc==2) {
+	//		host = argv[1];
+	//	}
+	//	else {
+	//		fprintf(stderr, "usage: simplex-talk host\n");
+	//		exit(1);
+	//	}
 
 	/* translate host name into peer's IP address */
 	hp = gethostbyname(host);
-	if (!hp) {
+	if (!hp)
+	{
 		printf("host: %s\n", host);
 		fprintf(stderr, "simplex-talk: unknown host: %s\n", host);
 		exit(1);
@@ -215,57 +230,85 @@ int main(int argc, char * argv[]){
 	sin.sin_port = htons(SERVER_PORT);
 
 	/* active open */
-	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+	{
 		perror("simplex-talk: socket");
 		exit(1);
-		}
-	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0){
+	}
+	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+	{
 		perror("simplex-talk: connect");
 		close(s);
 		exit(1);
 	}
 
-	
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
 	/* main loop: get and send lines of text */
 	char username[MAX_NAME_LEN] = {0};
-	while (1) {
-		if(fgets(buf, sizeof(buf), stdin)){
-
-      switch(current_state) {
-        // We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
-        case INTRO_ACK:
-          // Send ACK.
-          message_t ack_msg = create_message(ACK_MSG, username, "", 1);
-          send(s, &ack_msg, sizeof(message_t), 0);
-          current_state = CHAT;
-          break;
-        case INTRO_WAIT:
-          fprintf(stdout, "Waiting for Introduction from server.\r\n");
-
-          time_t start_time = time(NULL);
-          while (time(NULL) - start_time < TIMEOUT_SECONDS) {
-              message_t msg;
-              memcpy(&msg, buf_fifo, sizeof(message_t));
-              if (msg.msg_type == INTRODUCTION_MSG) {
-                  fprintf(stdout, "Received Introduction from %s.\r\n", msg.name);
-                  current_state = INTRO_ACK;
-                  current_state = CHAT;
-                  break;
-              }
-          }
-          if (current_state != CHAT) {
-              fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
-          }
-          break;
-      }
-
-			buf[MAX_LINE-1] = '\0';
+	while (1)
+	{
+		if (fgets(buf, sizeof(buf), stdin))
+		{
+			buf[MAX_LINE - 1] = '\0';
 			len = strlen(buf) + 1;
 			send(s, buf, len, 0);
 		}
-		
+
+		switch (current_state)
+		{
+		// We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here.
+		case INTRO_ACK:
+			// Send ACK.
+			message_t ack_msg = create_message(ACK_MSG, username, "", 1);
+			send(s, &ack_msg, sizeof(message_t), 0);
+			current_state = CHAT;
+			break;
+		case INTRO_WAIT:
+			fprintf(stdout, "Waiting for Introduction from server.\r\n");
+
+			time_t start_time = time(NULL);
+			while (time(NULL) - start_time < TIMEOUT_SECONDS)
+			{
+				message_t msg;
+				memcpy(&msg, buf_fifo, sizeof(message_t));
+				if (msg.msg_type == INTRODUCTION_MSG)
+				{
+					fprintf(stdout, "Received Introduction from %s.\r\n", msg.name);
+					current_state = INTRO_ACK;
+					current_state = CHAT;
+					break;
+				}
+			}
+			if (current_state != CHAT)
+			{
+				fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
+			}
+		case GOODBYE_WAIT:
+			// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
+			message_t goodbye_msg = create_message(GOODBYE_MSG, username, "", 1);
+			send(s, &goodbye_msg, sizeof(message_t), 0);
+
+			fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
+
+			time_t goodbye_start_time = time(NULL);
+			while (time(NULL) - goodbye_start_time < TIMEOUT_SECONDS)
+			{
+				message_t msg;
+				memcpy(&msg, buf_fifo, sizeof(message_t));
+				if (msg.msg_type == GOODBYE_ACK)
+				{
+					fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
+					break;
+				}
+			}
+			fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
+			// Doesn't matter because we die regardless. :((
+			break;
+		default:
+			break;
+		}
+		if (current_state == GOODBYE_WAIT || current_state == GOODBYE_ACK) break;
 		// // We have the buf_fifo, we'll convert into a message_t struct.
 		// message_t msg;
 		// memcpy(&msg, buf_fifo, sizeof(message_t));
