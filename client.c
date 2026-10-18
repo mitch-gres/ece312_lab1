@@ -258,31 +258,32 @@ int main(int argc, char *argv[]){
 				break;
 			case GOODBYE_WAIT:
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
-				message_t goodbye_msg = create_message(GOODBYE_MSG, username, "", 1);
+				message_t goodbye_msg = create_message(GOODBYE_MSG, name, "", seq_num++);
 				send(s, &goodbye_msg, sizeof(message_t), 0);
-
 				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
-
+				fflush(stdout);
 				time_t goodbye_start_time = time(NULL);
 				while (time(NULL) - goodbye_start_time < TIMEOUT_SECONDS){
 					message_t msg;
 					memcpy(&msg, buf_fifo, sizeof(message_t));
 					if (msg.msg_type == GOODBYE_ACK){
 						fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
+						fflush(stdout);
 						break;
 					}
 				}
 				fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
+				fflush(stdout);
 				// Doesn't matter because we die regardless. :((
 				break;
 			case GOODBYE_ACK: 
-				message_t goodbye_ack_msg = create_message(GOODBYE_ACK, username, "", 1);
+				message_t goodbye_ack_msg = create_message(GOODBYE_ACK, name, "", seq_num++);
 				send(s, &goodbye_ack_msg, sizeof(message_t), 0);
 				break;
 			default:
 				break;
 		}
-		if (current_state == GOODBYE_WAIT || current_state == GOODBYE_ACK) break;
+		if (state == GOODBYE_WAIT || state == GOODBYE_ACK) break;
 //		if(fgets(tx_buf, sizeof(tx_buf), stdin)){
 //			tx_buf[MAX_LINE-1] = '\0';
 //			len = strlen(tx_buf) + 1;
