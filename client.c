@@ -115,27 +115,54 @@ int main(int argc, char * argv[]){
 	int fd;
 	char * myfifo = "/tmp/myfifo";
 	char buf_fifo[MAX_LINE];
+	int state = 0;
 	
-	
-	
-//	fprintf(stdout, "Enter IPV4 address of target or just wait for request");
-//	fflush(stdout);
-//	char hostbuff[20];
-//	fgets(hostbuff, sizeof(hostbuff), stdin);
-//	strncpy(host, hostbuff, 16)
-	
-	
-	if (argc==2) {
-		host = argv[1];
+	fd = open(myfifo, O_RDONLY);
+	if (fd == -1) {
+		perror("open");
 	}
-	else {
-		fprintf(stderr, "usage: simplex-talk host\n");
-		exit(1);
+	char name[MAX_NAME_LEN];
+	fprintf(stderr, "Enter Name: ");
+	fflush(stdout);
+	fgets(name, sizeof(name), stdin);
+	state = 1;
+	name[strcspn(name, "\n")] = 0;
+	
+	state = 2;
+	fprintf(stdout, "Enter hostname (IPv4 address) of target or ! to wait for introduction: ");
+	fflush(stdout);
+	char hostbuff[20];
+	fgets(hostbuff, sizeof(hostbuff), stdin);
+	hostbuff[strcspn(hostbuff, "\n")] = 0;
+	strncpy(host, hostbuff, 20);
+	
+	if(hostbuff[0] == '!'){
+		state = 4;
+		ssize_t n;
+		while ((n = read(fd, buf, sizeof(buf))) > 0) {
+			message_t rx_msg = get_message_from_buffer(buf);
+			if(rx_msg.msg_type == INTRODUCTION_MSG){
+				host = rx_msg.body;
+				fflush(stdout);
+				break;
+			}
+		}
+	}else{
+		state = 3;
 	}
+	
+//	if (argc==2) {
+//		host = argv[1];
+//	}
+//	else {
+//		fprintf(stderr, "usage: simplex-talk host\n");
+//		exit(1);
+//	}
 
 	/* translate host name into peer's IP address */
 	hp = gethostbyname(host);
 	if (!hp) {
+		printf("host: %s\n", host);
 		fprintf(stderr, "simplex-talk: unknown host: %s\n", host);
 		exit(1);
 	}
@@ -157,13 +184,9 @@ int main(int argc, char * argv[]){
 		exit(1);
 	}
 
-	fd = open(myfifo, O_RDONLY);
+	
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
-	if (fd == -1) {
-		perror("open");
-	}
-
 	/* main loop: get and send lines of text */
 	while (1) {
 		if(fgets(buf, sizeof(buf), stdin)){
