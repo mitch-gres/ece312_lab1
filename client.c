@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -26,8 +27,30 @@
 #define GOODBYE_MSG 5
 #define ACK_MSG 6
 
+// Define the states of our state machine for the client.
+// There are more states defined in the state machine diagram that
+// we created but they're outside of this program. 
+#define INIT 1
+#define NAME 2
+#define INTRO_ACK 3
+#define INTRO_WAIT 4
+#define CHAT 5
+#define CHAT_ACK 6
+#define CHAT_WAIT 7
+#define GOODBYE_ACK 8
+#define GOODBYE_WAIT 9
+#define PROBE_ACK 10
+#define PROBE_WAIT 11
+#define CHANGE_NAME_ACK 13
+#define CHANGE_NAME_WAIT 14
+
 #define MAX_NAME_LEN 100
 #define MAX_MSG_LEN 256
+
+#define TIMEOUT_SECONDS 5
+
+uint8_t current_state = INIT;
+
 typedef struct {
 	char soh;
 	uint32_t sequence_number;
@@ -37,6 +60,7 @@ typedef struct {
 	char cr;
 	char lf;
 } message_t;
+
 
 message_t create_message(char msg_type, const char *name, const char *body, uint8_t sequence_number) {
 	message_t msg;
@@ -71,7 +95,14 @@ void* foo(void* arg){
 		return NULL;
 	}
 
+  // TODO: Make this something that's entered by the person on start. 
+  // Assume we've read in their username, well in this case I'm assuming number 
+  // so from there we'll use that. Don't use a number Mitchell. Just ask for text. 
+  current_state = NAME;
+  char username[MAX_NAME_LEN] = {0};
+
 	ssize_t n;
+
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		message_t rx_msg = get_message_from_buffer(buf);
     if (rx_msg.soh != 0xFF) {
@@ -175,8 +206,38 @@ int main(int argc, char * argv[]){
 	}
 
 	/* main loop: get and send lines of text */
+	char username[MAX_NAME_LEN] = {0};
 	while (1) {
 		if(fgets(buf, sizeof(buf), stdin)){
+
+      switch(current_state) {
+        // We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
+        case INTRO_ACK:
+          // Send ACK.
+          message_t ack_msg = create_message(ACK_MSG, username, "", 1);
+          send(s, &ack_msg, sizeof(message_t), 0);
+          current_state = CHAT;
+          break;
+        case INTRO_WAIT:
+          fprintf(stdout, "Waiting for Introduction from server.\r\n");
+
+          time_t start_time = time(NULL);
+          while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+              message_t msg;
+              memcpy(&msg, buf_fifo, sizeof(message_t));
+              if (msg.msg_type == INTRODUCTION_MSG) {
+                  fprintf(stdout, "Received Introduction from %s.\r\n", msg.name);
+                  current_state = INTRO_ACK;
+                  current_state = CHAT;
+                  break;
+              }
+          }
+          if (current_state != CHAT) {
+              fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
+          }
+          break;
+      }
+
 			buf[MAX_LINE-1] = '\0';
 			len = strlen(buf) + 1;
 			send(s, buf, len, 0);
