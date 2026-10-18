@@ -53,6 +53,11 @@ message_t create_message(char msg_type, const char *name, const char *body, uint
 message_t get_message_from_buffer(const char *buffer) {
 	message_t msg;
 	memcpy(&msg, buffer, sizeof(message_t));
+
+  if (msg.soh != SOH || msg.cr != CR || msg.lf != LF) {
+    fprintf(stderr, "Invalid message format: SOH, CR, or LF not found.\r\n");
+    msg.soh = 0xFF; // Indicates an invalid message. 
+  }
 return msg;
 }
 
@@ -69,28 +74,33 @@ void* foo(void* arg){
 	ssize_t n;
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		message_t rx_msg = get_message_from_buffer(buf);
-		switch(rx_msg.msg_type) {
-			case INTRODUCTION_MSG:
-				fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
-				break;
-			case CHAT_MSG:
-				fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
-				break;
-			case PROBE_MSG:
-				fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
-				break;
-			case NAME_CHANGE_MSG:
-				fprintf(stdout, "Received Name Change from %s.\r\n", rx_msg.name);
-				break;
-			case GOODBYE_MSG:
-				fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
-				break;
-			case ACK_MSG:
-				fprintf(stdout, "Received ACK from %s.\r\n", rx_msg.name);
-				break;
-			default:
-				fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
-	}
+    if (rx_msg.soh != 0xFF) {
+      switch(rx_msg.msg_type) {
+        case INTRODUCTION_MSG:
+          fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
+          break;
+        case CHAT_MSG:
+          fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+          break;
+        case PROBE_MSG:
+          fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
+          break;
+        case NAME_CHANGE_MSG:
+          fprintf(stdout, "Received Name Change from %s.\r\n", rx_msg.name);
+          break;
+        case GOODBYE_MSG:
+          fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
+          break;
+        case ACK_MSG:
+          fprintf(stdout, "Received ACK from %s.\r\n", rx_msg.name);
+          break;
+        default:
+          fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
+	    }
+    }
+    else if (rx_msg.soh == 0xFF) {
+      fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
+    }
 		//fwrite(buf, 1, n, stdout);
 		fflush(stdout);
 	}
