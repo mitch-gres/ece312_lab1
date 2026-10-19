@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <arpa/inet.h>
+#include <poll.h>
 
 #define SERVER_PORT 710
 #define MAX_LINE 512
@@ -89,6 +90,11 @@ void *foo(void *arg)
 {
 	char buf[MAX_LINE];
 	int fd = open("/tmp/myfifo", O_RDONLY);
+	int fd_2;
+	char *otherfifo = "/tmp/otherfifo";
+	
+	mkfifo(otherfifo, 0666);
+	fd_2 = open(otherfifo, O_WRONLY);
 
 	if (fd == -1){
 		perror("open");
@@ -98,11 +104,15 @@ void *foo(void *arg)
 	ssize_t n;
 
 	while ((n = read(fd, buf, sizeof(buf))) > 0){
+		if (write(fd_2, buf, sizeof(buf)) == -1) {
+				perror("write");
+				break;
+			}
 		message_t rx_msg = get_message_from_buffer(buf);
 		if (rx_msg.soh != 0xFF) {
 			switch(rx_msg.msg_type) {
 				case INTRODUCTION_MSG:
-					fprintf(stdout, "Received Introduction from %s. \n\r", rx_msg.name);
+					fprintf(stdout, "Received Introduction from %s: %s. \n\r", rx_msg.body, rx_msg.name);
 					break;
 				case CHAT_MSG:
 					fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
@@ -147,19 +157,32 @@ int main(int argc, char *argv[]){
 	int len;
 
 	int fd;
-	char *myfifo = "/tmp/myfifo";
+//	char *myfifo = "/tmp/myfifo";
+	char *myfifo = "/tmp/otherfifo";
 	char buf_fifo[MAX_LINE];
 	int state = 0;
+	
 	
 	char me_host[20];
 	uint32_t seq_num = 0;
 	
+	struct pollfd pfds;
+	short revents;
+	
+	
+	
+	pthread_t thread;
+	pthread_create(&thread, NULL, foo, NULL);
 	
 	fd = open(myfifo, O_RDONLY);
 	
 	if (fd == -1){
 		perror("open");
 	}
+	
+	pfds.fd = fd;
+	pfds.events = POLLIN;
+	
 	char name[MAX_NAME_LEN];
 	fprintf(stdout, "Enter Name: ");
 	fflush(stdout);
@@ -181,13 +204,19 @@ int main(int argc, char *argv[]){
 	strncpy(host, hostbuff, 20);
 
 	if (hostbuff[0] == '!'){
+		fprintf(stdout, "test \n");
+		fflush(stdout);
 		state = 4;
 		ssize_t n;
 		while ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 			message_t rx_msg = get_message_from_buffer(rx_buf);
 			if(rx_msg.msg_type == INTRODUCTION_MSG){
 				strncpy(host, rx_msg.body, 20);
-				fflush(stdout);
+				//char *thing = malloc(MAX_MSG_LEN+MAX_NAME_LEN);
+				//strncpy(thing, rx_msg.name);
+				//strcat(thing, rx_msg.body);
+				//fprintf(stdout, "Recieved Intoduction from %s: %s.\r\n", rx_msg.body, rx_msg.name);
+				//fflush(stdout);
 				break;
 			}
 		}
@@ -228,8 +257,6 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-	pthread_t thread;
-	pthread_create(&thread, NULL, foo, NULL);
 	/* main loop: get and send lines of text */
 	message_t msg;
 	time_t start_time = time(NULL);
@@ -245,8 +272,8 @@ int main(int argc, char *argv[]){
 			case INTRO_WAIT:
 				msg = create_message(INTRODUCTION_MSG, name, me_host, seq_num++);
 				send(s, &msg, sizeof(msg), 0);
-				fprintf(stdout, "Waiting for ACK from server.\r\n");
-				fflush(stdout);
+				//fprintf(stdout, "Waiting for ACK from server.\r\n");
+				//fflush(stdout);
 				start_time = time(NULL);
 				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
 					ssize_t n;
@@ -266,12 +293,23 @@ int main(int argc, char *argv[]){
 				break;
 			case CHAT:
 				ssize_t n;
-				if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
-					msg = get_message_from_buffer(rx_buf);
-					if (msg.msg_type == CHAT_MSG) {
-						state = CHAT_ACK;
-						break;
+				int i = poll(&pfds, 1, -1);
+				if (i == -1) {
+					perror("poll");
+					exit(EXIT_FAILURE);
+				}
+				revents = pfds.revents;
+				if (revents & POLLIN) {
+					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+						msg = get_message_from_buffer(rx_buf);
+						if (msg.msg_type == CHAT_MSG) {
+							state = CHAT_ACK;
+							break;
+						}
 					}
+				}
+				if (revents & POLLHUP) {
+					close(pfds.fd);
 				}
 				if(fgets(tx_buf, sizeof(tx_buf), stdin)){
 					tx_buf[MAX_LINE-1] = '\0';
