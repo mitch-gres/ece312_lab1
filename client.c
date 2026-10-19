@@ -274,7 +274,7 @@ int main(int argc, char *argv[]){
 				fprintf(stdout, "Waiting for ACK from server.\r\n");
 				fflush(stdout);
 				start_time = time(NULL);
-				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]){
 				break;
 			case CHAT_WAIT:
 				start_time = time(NULL);
-				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -397,13 +397,13 @@ int main(int argc, char *argv[]){
 			case PROBE_WAIT:
 				start_time = time(NULL);
 				while (time_elapsed < TIMEOUT_SECONDS) {
-					time_elapsed = time(NULL) - start_time;
+					time_elapsed = difftime(start_time, time(NULL));
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
 							//fprintf(stdout, "Received Probe ACK from %s.\r\n", msg.name);
-							fprintf(stdout, "Time Elapsed %ld\r\n", time_elapsed);
+							fprintf(stdout, "Time Elapsed %d\r\n", time_elapsed);
 							fflush(stdout);
 							state = CHAT;
 							break;
@@ -423,7 +423,7 @@ int main(int argc, char *argv[]){
 				break;
 			case CHANGE_NAME_WAIT:
 				start_time = time(NULL);
-				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -445,8 +445,8 @@ int main(int argc, char *argv[]){
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
 				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
-				time_t goodbye_start_time = time(NULL);
-				while (time(NULL) - goodbye_start_time < TIMEOUT_SECONDS){
+				start_time = time(NULL);
+				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS){
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
