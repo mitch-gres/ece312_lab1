@@ -94,7 +94,7 @@ void *foo(void *arg){
 	fd_2 = open(otherfifo, O_WRONLY);
 
 	if (fd == -1){
-		perror("open");
+		fprintf(stdout, "fifo open error\n");
 		return NULL;
 	}
 
@@ -102,7 +102,7 @@ void *foo(void *arg){
 
 	while ((n = read(fd, buf, sizeof(buf))) > 0){
 		if (write(fd_2, buf, sizeof(buf)) == -1) {
-				perror("write");
+				fprintf(stdout, "fifo write error\n");
 				break;
 			}
 		message_t rx_msg = get_message_from_buffer(buf);
@@ -126,20 +126,20 @@ void *foo(void *arg){
 					fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
 					break;
 				case ACK_MSG:
-					fprintf(stdout, "Received ACK from %s %s.\r\n", rx_msg.name, rx_msg.body);
+					fprintf(stdout, "Received ACK from %s. Body: %s.\r\n", rx_msg.name, rx_msg.body);
 					break;
 				default:
 					fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
 			}
 		} else if (rx_msg.soh == 0xFF) {
-			fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
+			fprintf(stdout, "Message Received is invalid. Invalid message format.\r\n");
 		}
 		//fwrite(buf, 1, n, stdout);
 		fflush(stdout);
 	}
 
 	if (n < 0)
-		perror("read");
+		fprintf(stdout, "fifo read error \n");
 
 	close(fd);
 	return NULL;
@@ -287,8 +287,9 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
+					fprintf(stdout, "Timeout waiting for Introduction from server.\r\n");
 					fflush(stdout);
+					state = INTRO_WAIT;
 				}
 				break;
 			case CHAT:
@@ -318,10 +319,12 @@ int main(int argc, char *argv[]){
 							case INTRODUCTION_MSG:
 								state = INTRO_ACK;
 								break;
+							case ACK_MSG:
+								state = CHAT;
+								break;
 							default:
 								fprintf(stdout, "unknown message recieved \n");
 								fflush(stdout);
-								break;
 						}
 					}
 				}
@@ -373,6 +376,11 @@ int main(int argc, char *argv[]){
 						}
 					}
 				}
+				if (state != CHAT){
+					fprintf(stdout, "Timeout waiting for Chat ACK from server.\r\n");
+					fflush(stdout);
+					state = CHAT_WAIT;
+				}
 				break;
 			case CHAT_ACK:
 				char buf[20];
@@ -403,8 +411,9 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stderr, "Timeout waiting for Probe ACK from server.\r\n");
+					fprintf(stdout, "Timeout waiting for Probe ACK from server.\r\n");
 					fflush(stdout);
+					state = PROBE_WAIT;
 				}
 				break;
 			case CHANGE_NAME_ACK:
@@ -426,11 +435,14 @@ int main(int argc, char *argv[]){
 						}
 					}
 				}
+				if (state != CHAT){
+					fprintf(stdout, "Timeout waiting for Name Change ACK from server.\r\n");
+					fflush(stdout);
+					state = CHANGE_NAME_WAIT;
+				}
 				break;
 			case GOODBYE_WAIT:
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
-				msg = create_message(GOODBYE_MSG, name, "", seq_num++);
-				send(s, &msg, sizeof(message_t), 0);
 				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
 				time_t goodbye_start_time = time(NULL);
@@ -445,7 +457,7 @@ int main(int argc, char *argv[]){
 						}
 					}
 				}
-				fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
+				fprintf(stdout, "Timeout waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
 				// Doesn't matter because we die regardless. :((
 				break;
@@ -454,10 +466,14 @@ int main(int argc, char *argv[]){
 				send(s, &msg, sizeof(message_t), 0);
 				break;
 			default:
-				break;
+				fprintf(stdout, "Unknown state, going back to chat");
+				fflush(stdout);
+				state = CHAT;
 		}
 		if (state == GOODBYE_WAIT || state == GOODBYE_ACK) break;
 	}
 	pthread_join(thread, NULL);
 	close(fd);
+	fprintf(stdout, "End of line.");
+	return 0;
 }
