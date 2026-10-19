@@ -194,7 +194,7 @@ int main(int argc, char *argv[]){
 
 	state = NAME;
 	fprintf(stdout, "Enter hostname (IPv4 address) of target or ! to wait for introduction: ");
-	fflush(stdout);	
+	fflush(stdout);
 	// Read in the IPV4 Address that's requested from the user. 
 	fgets(host, sizeof(host), stdin);
 	host[strcspn(host, "\n")] = 0; // fgets(...) will copy in \n so we should strip it out. 
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]){
 
 	/* main loop: get and send lines of text */
 	message_t msg;
-	double time_elapsed = 0;
+	double time_elapsed;
 	time_t start_time = time(NULL);
 	while (1) {
 		switch(state) {
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]){
 				fprintf(stdout, "Waiting for ACK from server.\r\n");
 				fflush(stdout);
 				start_time = time(NULL);
-				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
+				while (difftime(time(NULL), start_time) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]){
 				break;
 			case CHAT_WAIT:
 				start_time = time(NULL);
-				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
+				while (difftime(time(NULL), start_time) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -396,8 +396,9 @@ int main(int argc, char *argv[]){
 				break;
 			case PROBE_WAIT:
 				start_time = time(NULL);
+				time_elapsed = difftime(time(NULL), start_time);
 				while (time_elapsed < TIMEOUT_SECONDS) {
-					time_elapsed = difftime(start_time, time(NULL));
+					time_elapsed = difftime(time(NULL), start_time);
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -423,7 +424,7 @@ int main(int argc, char *argv[]){
 				break;
 			case CHANGE_NAME_WAIT:
 				start_time = time(NULL);
-				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS) {
+				while (difftime(time(NULL), start_time) < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
@@ -446,7 +447,7 @@ int main(int argc, char *argv[]){
 				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
 				start_time = time(NULL);
-				while (difftime(start_time, time(NULL)) < TIMEOUT_SECONDS){
+				while (difftime(time(NULL), start_time) < TIMEOUT_SECONDS){
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
