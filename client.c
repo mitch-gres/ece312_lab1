@@ -257,7 +257,7 @@ int main(int argc, char *argv[]){
 
 	/* main loop: get and send lines of text */
 	message_t msg;
-	time_t time_elapsed = 0;
+	double time_elapsed = 0;
 	time_t start_time = time(NULL);
 	while (1) {
 		switch(state) {
@@ -403,7 +403,7 @@ int main(int argc, char *argv[]){
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
 							//fprintf(stdout, "Received Probe ACK from %s.\r\n", msg.name);
-							fprintf(stdout, "Time Elapsed %d\r\n", time_elapsed);
+							fprintf(stdout, "Time Elapsed: %lf.\r\n", time_elapsed);
 							fflush(stdout);
 							state = CHAT;
 							break;
