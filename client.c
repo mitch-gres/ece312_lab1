@@ -361,17 +361,21 @@ int main(int argc, char *argv[]){
 				}
 				break;
 			case CHANGE_NAME_ACK:
-				// Assume that we're put into this state but we haven't changed our name yet
-				// which means we need to prompt our user here to enter their name.
-
-				// TODO: Prompt & Put into Name
-
 				msg = create_message(NAME_CHANGE_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
 				break;
 			case CHANGE_NAME_WAIT:
-				
+				// Assume that we're put into this state but we haven't changed our name yet
+				// which means we need to prompt our user here to enter their name.
+				fprintf(stdout, "Enter your New Name: ");
+				fflush(stdout);
+				fgets(name, sizeof(name), stdin);
+				name[strcspn(name, "\n")] = 0;
+
+				msg = create_message(NAME_CHANGE_MSG, name, "", seq_num++);
+				send(s, &msg, sizeof(message_t), 0);
+				state = CHAT;
 				break;
 			case GOODBYE_WAIT:
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
