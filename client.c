@@ -231,25 +231,27 @@ int main(int argc, char *argv[]){
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
 	/* main loop: get and send lines of text */
+	message_t msg;
+	time_t start_time = time(NULL);
 	while (1) {
 		switch(state) {
 		// We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
 			case INTRO_ACK:
 				// Send ACK.
-				message_t ack_msg = create_message(ACK_MSG, name, "", seq_num++);
-				send(s, &ack_msg, sizeof(message_t), 0);
+				msg = create_message(ACK_MSG, name, "", seq_num++);
+				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
 				break;
 			case INTRO_WAIT:
-				message_t msg = create_message(INTRODUCTION_MSG, name, me_host, seq_num++);
+				msg = create_message(INTRODUCTION_MSG, name, me_host, seq_num++);
 				send(s, &msg, sizeof(msg), 0);
 				fprintf(stdout, "Waiting for ACK from server.\r\n");
 				fflush(stdout);
-				time_t start_time = time(NULL);
+				start_time = time(NULL);
 				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
 					ssize_t n;
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
-						message_t msg = get_message_from_buffer(rx_buf);
+						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
 							fprintf(stdout, "Received ACK from %s.\r\n", msg.name);
 							fflush(stdout);
@@ -262,20 +264,61 @@ int main(int argc, char *argv[]){
 					fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
 				}
 				break;
+			case CHAT:
+				ssize_t n;
+				if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+					msg = get_message_from_buffer(rx_buf);
+					if (msg.msg_type == CHAT_MSG) {
+						state = CHAT_ACK;
+						break;
+					}
+				}
+				if(fgets(tx_buf, sizeof(tx_buf), stdin)){
+					tx_buf[MAX_LINE-1] = '\0';
+					len = strlen(tx_buf) + 1;
+					//send(s, tx_buf, len, 0);
+					tx_buf[strcspn(tx_buf, "\n")] = 0;
+				}
+				msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
+				send(s, &msg, sizeof(msg), 0);
+				state = CHAT_WAIT;
+				break;
+			case CHAT_WAIT:
+				start_time = time(NULL);
+				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+					ssize_t n;
+					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+						msg = get_message_from_buffer(rx_buf);
+						if (msg.msg_type == ACK_MSG) {
+							fprintf(stdout, "Received ACK from %s.\r\n", msg.name);
+							fflush(stdout);
+							state = CHAT;
+							break;
+						}
+					}
+				}
+				break;
+			case CHAT_ACK:
+				msg = create_message(ACK_MSG, name, "", seq_num++);
+				send(s, &msg, sizeof(message_t), 0);
+				state = CHAT;
+				break;
 			case GOODBYE_WAIT:
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
-				message_t goodbye_msg = create_message(GOODBYE_MSG, name, "", seq_num++);
-				send(s, &goodbye_msg, sizeof(message_t), 0);
+				msg = create_message(GOODBYE_MSG, name, "", seq_num++);
+				send(s, &msg, sizeof(message_t), 0);
 				fprintf(stdout, "Waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
 				time_t goodbye_start_time = time(NULL);
 				while (time(NULL) - goodbye_start_time < TIMEOUT_SECONDS){
-					message_t msg;
-					memcpy(&msg, buf_fifo, sizeof(message_t));
-					if (msg.msg_type == GOODBYE_ACK){
-						fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
-						fflush(stdout);
-						break;
+					ssize_t n;
+					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+						msg = get_message_from_buffer(rx_buf);
+						if (msg.msg_type == ACK_MSG) {
+							fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
+							fflush(stdout);
+							break;
+						}
 					}
 				}
 				fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
@@ -283,8 +326,8 @@ int main(int argc, char *argv[]){
 				// Doesn't matter because we die regardless. :((
 				break;
 			case GOODBYE_ACK: 
-				message_t goodbye_ack_msg = create_message(GOODBYE_ACK, name, "", seq_num++);
-				send(s, &goodbye_ack_msg, sizeof(message_t), 0);
+				msg = create_message(ACK_MSG, name, "", seq_num++);
+				send(s, &msg, sizeof(message_t), 0);
 				break;
 			default:
 				break;
