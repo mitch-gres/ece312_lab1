@@ -112,19 +112,21 @@ void *foo(void *arg){
 					fprintf(stdout, "Received Introduction from %s: %s. \n\r", rx_msg.body, rx_msg.name);
 					break;
 				case CHAT_MSG:
-					fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+					//fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+					fprintf(stdout, "%s: %s\r\n", rx_msg.name, rx_msg.body);
 					break;
 				case PROBE_MSG:
 					fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
 					break;
 				case NAME_CHANGE_MSG:
 					fprintf(stdout, "Received Name Change from %s.\r\n", rx_msg.name);
+					fprintf(stdout, "%s's name is now: %s.\r\n", rx_msg.name, rx_msg.body);
 					break;
 				case GOODBYE_MSG:
 					fprintf(stdout, "Received Goodbye from %s.\r\n", rx_msg.name);
 					break;
 				case ACK_MSG:
-					fprintf(stdout, "Received ACK from %s.\r\n", rx_msg.name);
+					fprintf(stdout, "Received ACK from %s %s.\r\n", rx_msg.name, rx_msg.body);
 					break;
 				default:
 					fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
@@ -199,7 +201,7 @@ int main(int argc, char *argv[]){
 
 	// If user entered a '!' instead of an IP Address then we should wait for a conncetion.
 	if (host[0] == '!'){
-		fprintf(stdout, "test \n");
+		fprintf(stdout, "Waiting for introduction message.\r\n");
 		fflush(stdout);
 		state = INTRO_ACK;
 		ssize_t n;
@@ -262,7 +264,7 @@ int main(int argc, char *argv[]){
 		// We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
 			case INTRO_ACK:
 				// Send ACK.
-				msg = create_message(ACK_MSG, name, "", seq_num++);
+				msg = create_message(ACK_MSG, name, name, seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
 				break;
@@ -286,11 +288,12 @@ int main(int argc, char *argv[]){
 				}
 				if (state != CHAT){
 					fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
+					fflush(stdout);
 				}
 				break;
 			case CHAT:
 				ssize_t n;
-				int i = poll(&pfds, 1, -1);
+				int i = poll(&pfds, 1, 0);
 				if (i == -1) {
 					perror("poll");
 					exit(EXIT_FAILURE);
@@ -299,9 +302,26 @@ int main(int argc, char *argv[]){
 				if (revents & POLLIN) {
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
-						if (msg.msg_type == CHAT_MSG) {
-							state = CHAT_ACK;
-							break;
+						switch (msg.msg_type) {
+							case CHAT_MSG:
+								state = CHAT_ACK;
+								break;
+							case PROBE_MSG:
+								state = PROBE_ACK;
+								break;
+							case NAME_CHANGE_MSG:
+								state = CHANGE_NAME_ACK;
+								break;
+							case GOODBYE_MSG:
+								state = GOODBYE_ACK;
+								break;
+							case INTRODUCTION_MSG:
+								state = INTRO_ACK;
+								break;
+							default:
+								fprintf(stdout, "unknown message recieved \n");
+								fflush(stdout);
+								break;
 						}
 					}
 				}
@@ -309,10 +329,31 @@ int main(int argc, char *argv[]){
 					close(pfds.fd);
 				}
 				if(fgets(tx_buf, sizeof(tx_buf), stdin)){
-					tx_buf[MAX_LINE-1] = '\0';
-					len = strlen(tx_buf) + 1;
+					//tx_buf[MAX_LINE-1] = '\0';
+					//len = strlen(tx_buf) + 1;
 					//send(s, tx_buf, len, 0);
 					tx_buf[strcspn(tx_buf, "\n")] = 0;
+					//fprintf(stdout, "MSG: %s.\n", tx_buf);
+					//fflush(stdout);
+					if(strstr(tx_buf,":p") != NULL){
+						state = PROBE_WAIT;
+						msg = create_message(PROBE_MSG, name, "", seq_num++);
+						send(s, &msg, sizeof(msg), 0);
+						break;
+					}else if(strstr(tx_buf,":nc") != NULL){
+						state = CHANGE_NAME_WAIT;
+						char buf[MAX_NAME_LEN];
+						strncpy(buf, strstr(tx_buf,":nc") + 4, sizeof(MAX_NAME_LEN));
+						msg = create_message(NAME_CHANGE_MSG, name, buf, seq_num++);
+						strncpy(name, buf, sizeof(name));
+						send(s, &msg, sizeof(msg), 0);
+						break;
+					}else if(strstr(tx_buf, ":q") != NULL){
+						state = GOODBYE_WAIT;
+						msg = create_message(GOODBYE_MSG, name, "", seq_num++);
+						send(s, &msg, sizeof(msg), 0);
+						break;
+					}
 				}
 				msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
 				send(s, &msg, sizeof(msg), 0);
@@ -325,8 +366,8 @@ int main(int argc, char *argv[]){
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
-							fprintf(stdout, "Received ACK from %s.\r\n", msg.name);
-							fflush(stdout);
+							//fprintf(stdout, "Received ACK from %s.\r\n", msg.name);
+							//fflush(stdout);
 							state = CHAT;
 							break;
 						}
@@ -334,7 +375,9 @@ int main(int argc, char *argv[]){
 				}
 				break;
 			case CHAT_ACK:
-				msg = create_message(ACK_MSG, name, "", seq_num++);
+				char buf[20];
+				snprintf(buf, sizeof(buf), "%d", msg.sequence_number);
+				msg = create_message(ACK_MSG, name, buf, seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
 				break;
@@ -351,7 +394,7 @@ int main(int argc, char *argv[]){
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
-							fprintf(stdout, "Received Probe ACK from %s.\r\n", msg.name);
+							//fprintf(stdout, "Received Probe ACK from %s.\r\n", msg.name);
 							fprintf(stdout, "Time Elapsed %ld\r\n", time_elapsed);
 							fflush(stdout);
 							state = CHAT;
@@ -359,19 +402,30 @@ int main(int argc, char *argv[]){
 						}
 					}
 				}
+				if (state != CHAT){
+					fprintf(stderr, "Timeout waiting for Probe ACK from server.\r\n");
+					fflush(stdout);
+				}
 				break;
 			case CHANGE_NAME_ACK:
-				// Assume that we're put into this state but we haven't changed our name yet
-				// which means we need to prompt our user here to enter their name.
-
-				// TODO: Prompt & Put into Name
-
-				msg = create_message(NAME_CHANGE_MSG, name, "", seq_num++);
+				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
 				break;
 			case CHANGE_NAME_WAIT:
-				
+				start_time = time(NULL);
+				while (time(NULL) - start_time < TIMEOUT_SECONDS) {
+					ssize_t n;
+					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+						msg = get_message_from_buffer(rx_buf);
+						if (msg.msg_type == ACK_MSG) {
+							//fprintf(stdout, "Received ACK from %s.\r\n", msg.name);
+							//fflush(stdout);
+							state = CHAT;
+							break;
+						}
+					}
+				}
 				break;
 			case GOODBYE_WAIT:
 				// Send the message and now wait for (hopefully) and ACK but doesn't really matter if we get it or not because we're going to die anyway.
@@ -385,8 +439,8 @@ int main(int argc, char *argv[]){
 					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
-							fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
-							fflush(stdout);
+							//fprintf(stdout, "Received Goodbye ACK from %s.\r\n", msg.name);
+							//fflush(stdout);
 							break;
 						}
 					}
