@@ -7,10 +7,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 
 #define SERVER_PORT 710
 #define MAX_LINE 512
@@ -154,18 +154,23 @@ int main(int argc, char *argv[]){
 	char me_host[20];
 	uint32_t seq_num = 0;
 	
-	gethostname(me_host, 20);
+	
 	fd = open(myfifo, O_RDONLY);
 	
 	if (fd == -1){
 		perror("open");
 	}
 	char name[MAX_NAME_LEN];
-	fprintf(stderr, "Enter Name: ");
+	fprintf(stdout, "Enter Name: ");
 	fflush(stdout);
 	fgets(name, sizeof(name), stdin);
 	state = 1;
 	name[strcspn(name, "\n")] = 0;
+	
+	fprintf(stdout, "Enter your IP: ");
+	fflush(stdout);
+	fgets(me_host, sizeof(me_host), stdin);
+	me_host[strcspn(me_host, "\n")] = 0;
 
 	state = 2;
 	fprintf(stdout, "Enter hostname (IPv4 address) of target or ! to wait for introduction: ");
@@ -237,6 +242,7 @@ int main(int argc, char *argv[]){
 				break;
 			case INTRO_WAIT:
 				message_t msg = create_message(INTRODUCTION_MSG, name, me_host, seq_num++);
+				send(s, &msg, sizeof(msg), 0);
 				fprintf(stdout, "Waiting for ACK from server.\r\n");
 				fflush(stdout);
 				time_t start_time = time(NULL);
