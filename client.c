@@ -105,7 +105,7 @@ void *foo(void *arg){
 				break;
 			}
 		message_t rx_msg = get_message_from_buffer(buf);
-		if (rx_msg.soh != 0xFF) {
+		if (rx_msg.soh != (char)0xFF) {
 			switch(rx_msg.msg_type) {
 				case INTRODUCTION_MSG:
 					fprintf(stdout, "Received Introduction from %s: %s. \n\r", rx_msg.body, rx_msg.name);
@@ -130,7 +130,7 @@ void *foo(void *arg){
 				default:
 					fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
 			}
-		} else if (rx_msg.soh == 0xFF) {
+		} else if (rx_msg.soh == (char)0xFF) {
 			fprintf(stdout, "Message Received is invalid. Invalid message format.\r\n");
 		}
 		//fwrite(buf, 1, n, stdout);
@@ -146,7 +146,7 @@ void *foo(void *arg){
 }
 
 int main(int argc, char *argv[]){
-	FILE *fp;
+	//FILE *fp;
 	struct hostent *hp;
 	struct sockaddr_in sin;
 	char host[20]; // The other person that I'm talking to.
@@ -154,12 +154,12 @@ int main(int argc, char *argv[]){
 	char tx_buf[MAX_LINE];
 	char rx_buf[MAX_LINE];
 	int s;
-	int len;
+	//int len;
 
 	int fd;
 //	char *myfifo = "/tmp/myfifo";
 	char *myfifo = "/tmp/otherfifo";
-	char buf_fifo[MAX_LINE];
+	//char buf_fifo[MAX_LINE];
 	int state = 0;
 	char me_host[20];
 	uint32_t seq_num = 0;
@@ -421,6 +421,7 @@ int main(int argc, char *argv[]){
 						msg = get_message_from_buffer(rx_buf);
 						if (msg.msg_type == ACK_MSG) {
 							//fprintf(stdout, "Received Probe ACK from %s.\r\n", msg.name);
+							time_elapsed = difftime(time(NULL), start_time);
 							fprintf(stdout, "Time Elapsed: %lf.\r\n", time_elapsed);
 							fflush(stdout);
 							state = CHAT;
