@@ -295,7 +295,7 @@ int main(int argc, char *argv[]){
 				if (state != CHAT){
 					fprintf(stdout, "Timeout waiting for Introduction from server.\r\n");
 					fflush(stdout);
-					state = INTRO_WAIT;
+					state = CHAT;
 				}
 				break;
 			case CHAT:
@@ -392,7 +392,7 @@ int main(int argc, char *argv[]){
 				if (state != CHAT){
 					fprintf(stdout, "Timeout waiting for Chat ACK from server.\r\n");
 					fflush(stdout);
-					state = CHAT_WAIT;
+					state = CHAT;
 				}
 				break;
 			case CHAT_ACK:
@@ -432,7 +432,7 @@ int main(int argc, char *argv[]){
 				if (state != CHAT){
 					fprintf(stdout, "Timeout waiting for Probe ACK from server.\r\n");
 					fflush(stdout);
-					state = PROBE_WAIT;
+					state = CHAT;
 				}
 				break;
 			case CHANGE_NAME_ACK:
@@ -459,7 +459,7 @@ int main(int argc, char *argv[]){
 				if (state != CHAT){
 					fprintf(stdout, "Timeout waiting for Name Change ACK from server.\r\n");
 					fflush(stdout);
-					state = CHANGE_NAME_WAIT;
+					state = CHAT;
 				}
 				break;
 			case GOODBYE_WAIT:
