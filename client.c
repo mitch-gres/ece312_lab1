@@ -112,8 +112,8 @@ void *foo(void *arg){
 					fprintf(stdout, "Received Introduction from %s: %s. \n\r", rx_msg.body, rx_msg.name);
 					break;
 				case CHAT_MSG:
-					//fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
-					fprintf(stdout, "%s: %s\r\n", rx_msg.name, rx_msg.body);
+					fprintf(stdout, "Received Chat from %s: %s\r\n", rx_msg.name, rx_msg.body);
+					//fprintf(stdout, "%s: %s\r\n", rx_msg.name, rx_msg.body);
 					break;
 				case PROBE_MSG:
 					fprintf(stdout, "Received Probe from %s.\r\n", rx_msg.name);
@@ -140,7 +140,8 @@ void *foo(void *arg){
 
 	if (n < 0)
 		fprintf(stdout, "fifo read error \n");
-
+	
+	fflush(stdout);
 	close(fd);
 	return NULL;
 }
@@ -334,7 +335,7 @@ int main(int argc, char *argv[]){
 					close(pfds.fd);
 				}
 				if(fgets(tx_buf, sizeof(tx_buf), stdin)){
-					//tx_buf[MAX_LINE-1] = '\0';
+					tx_buf[MAX_LINE-1] = '\0';
 					//len = strlen(tx_buf) + 1;
 					//send(s, tx_buf, len, 0);
 					tx_buf[strcspn(tx_buf, "\n")] = 0;
@@ -359,10 +360,10 @@ int main(int argc, char *argv[]){
 						send(s, &msg, sizeof(msg), 0);
 						break;
 					}
+					msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
+					send(s, &msg, sizeof(msg), 0);
+					state = CHAT_WAIT;
 				}
-				msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
-				send(s, &msg, sizeof(msg), 0);
-				state = CHAT_WAIT;
 				break;
 			case CHAT_WAIT:
 				start_time = time(NULL);
