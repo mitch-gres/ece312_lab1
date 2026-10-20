@@ -164,7 +164,8 @@ int main(int argc, char *argv[]){
 	char me_host[20];
 	uint32_t seq_num = 0;
 	
-	struct pollfd pfds;
+	enum { N = 2 };
+	struct pollfd pfds[N];
 	short revents;
 	
 	
@@ -178,8 +179,10 @@ int main(int argc, char *argv[]){
 		perror("open");
 	}
 	
-	pfds.fd = fd;
-	pfds.events = POLLIN;
+	pfds[0].fd = fd;
+	pfds[0].events = POLLIN;
+	pfds[1].fd = STDIN_FILENO;
+	pfds[1].events = POLLIN;
 	
 	char name[MAX_NAME_LEN];
 	fprintf(stdout, "Enter Name: ");
@@ -297,14 +300,14 @@ int main(int argc, char *argv[]){
 				break;
 			case CHAT:
 				ssize_t n;
-				int i = poll(&pfds, 1, 0);
+				int i = poll(pfds, N, 0);
 				if (i == -1) {
 					perror("poll");
 					exit(EXIT_FAILURE);
 				}
-				revents = pfds.revents;
+				revents = pfds[0].revents;
 				if (revents & POLLIN) {
-					if ((n = read(fd, rx_buf, sizeof(rx_buf))) > 0) {
+					if ((n = read(pfds[0].fd, rx_buf, sizeof(rx_buf))) > 0) {
 						msg = get_message_from_buffer(rx_buf);
 						switch (msg.msg_type) {
 							case CHAT_MSG:
@@ -332,37 +335,44 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (revents & POLLHUP) {
-					close(pfds.fd);
+					close(pfds[0].fd);
 				}
-				if(fgets(tx_buf, sizeof(tx_buf), stdin)){
-					tx_buf[MAX_LINE-1] = '\0';
-					//len = strlen(tx_buf) + 1;
-					//send(s, tx_buf, len, 0);
-					tx_buf[strcspn(tx_buf, "\n")] = 0;
-					//fprintf(stdout, "MSG: %s.\n", tx_buf);
-					//fflush(stdout);
-					if(strstr(tx_buf,":p") != NULL){
-						state = PROBE_WAIT;
-						msg = create_message(PROBE_MSG, name, "", seq_num++);
+				revents = pfds[1].revents;
+				if (revents & POLLIN) {
+					//if(fgets(tx_buf, sizeof(tx_buf), pfds[1].fd)){
+					if((n = read(pfds[1].fd, tx_buf, sizeof(tx_buf))) > 0){
+						tx_buf[MAX_LINE-1] = '\0';
+						//len = strlen(tx_buf) + 1;
+						//send(s, tx_buf, len, 0);
+						tx_buf[strcspn(tx_buf, "\n")] = 0;
+						//fprintf(stdout, "MSG: %s.\n", tx_buf);
+						//fflush(stdout);
+						if(strstr(tx_buf,":p") != NULL){
+							state = PROBE_WAIT;
+							msg = create_message(PROBE_MSG, name, "", seq_num++);
+							send(s, &msg, sizeof(msg), 0);
+							break;
+						}else if(strstr(tx_buf,":nc") != NULL){
+							state = CHANGE_NAME_WAIT;
+							char buf[MAX_NAME_LEN];
+							strncpy(buf, strstr(tx_buf,":nc") + 4, sizeof(MAX_NAME_LEN));
+							msg = create_message(NAME_CHANGE_MSG, name, buf, seq_num++);
+							strncpy(name, buf, sizeof(name));
+							send(s, &msg, sizeof(msg), 0);
+							break;
+						}else if(strstr(tx_buf, ":q") != NULL){
+							state = GOODBYE_WAIT;
+							msg = create_message(GOODBYE_MSG, name, "", seq_num++);
+							send(s, &msg, sizeof(msg), 0);
+							break;
+						}
+						msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
 						send(s, &msg, sizeof(msg), 0);
-						break;
-					}else if(strstr(tx_buf,":nc") != NULL){
-						state = CHANGE_NAME_WAIT;
-						char buf[MAX_NAME_LEN];
-						strncpy(buf, strstr(tx_buf,":nc") + 4, sizeof(MAX_NAME_LEN));
-						msg = create_message(NAME_CHANGE_MSG, name, buf, seq_num++);
-						strncpy(name, buf, sizeof(name));
-						send(s, &msg, sizeof(msg), 0);
-						break;
-					}else if(strstr(tx_buf, ":q") != NULL){
-						state = GOODBYE_WAIT;
-						msg = create_message(GOODBYE_MSG, name, "", seq_num++);
-						send(s, &msg, sizeof(msg), 0);
-						break;
+						state = CHAT_WAIT;
 					}
-					msg = create_message(CHAT_MSG, name, tx_buf, seq_num++);
-					send(s, &msg, sizeof(msg), 0);
-					state = CHAT_WAIT;
+				}
+				if (revents & POLLHUP) {
+					close(pfds[1].fd);
 				}
 				break;
 			case CHAT_WAIT:
