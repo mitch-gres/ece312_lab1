@@ -264,6 +264,8 @@ int main(int argc, char *argv[]){
 		// We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
 			case INTRO_ACK:
 				// Send ACK.
+				fprintf(stdout, "Send Intro ACK\n");
+				fflush(stdout);
 				msg = create_message(ACK_MSG, name, name, seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -383,6 +385,8 @@ int main(int argc, char *argv[]){
 				}
 				break;
 			case CHAT_ACK:
+				fprintf(stdout, "Send Chat ACK\n");
+				fflush(stdout);
 				char buf[20];
 				snprintf(buf, sizeof(buf), "%d", msg.sequence_number);
 				msg = create_message(ACK_MSG, name, buf, seq_num++);
@@ -390,6 +394,8 @@ int main(int argc, char *argv[]){
 				state = CHAT;
 				break;
 			case PROBE_ACK:
+				fprintf(stdout, "Send Probe ACK\n");
+				fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -418,6 +424,8 @@ int main(int argc, char *argv[]){
 				}
 				break;
 			case CHANGE_NAME_ACK:
+				fprintf(stdout, "Send Name Change ACK\n");
+				fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -462,7 +470,9 @@ int main(int argc, char *argv[]){
 				fflush(stdout);
 				// Doesn't matter because we die regardless. :((
 				break;
-			case GOODBYE_ACK: 
+			case GOODBYE_ACK:
+				fprintf(stdout, "Send Goodbye ACK\n");
+				fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				break;
