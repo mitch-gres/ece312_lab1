@@ -99,7 +99,6 @@ void *foo(void *arg){
 	}
 
 	ssize_t n;
-
 	while ((n = read(fd, buf, sizeof(buf))) > 0){
 		if (write(fd_2, buf, sizeof(buf)) == -1) {
 				fprintf(stdout, "fifo write error\n");
@@ -171,6 +170,7 @@ int main(int argc, char *argv[]){
 	
 	pthread_t thread;
 	pthread_create(&thread, NULL, foo, NULL);
+	usleep(100);
 	
 	fd = open(myfifo, O_RDONLY);
 	
