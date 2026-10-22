@@ -131,14 +131,14 @@ void *foo(void *arg){
 					fprintf(stdout, "Received Unknown Message Type from %s.\r\n", rx_msg.name);
 			}
 		} else if (rx_msg.soh == (char)0xFF) {
-			fprintf(stdout, "Message Received is invalid. Invalid message format.\r\n");
+			fprintf(stderr, "Message Received is invalid. Invalid message format.\r\n");
 		}
 		//fwrite(buf, 1, n, stdout);
 		fflush(stdout);
 	}
 
 	if (n < 0)
-		fprintf(stdout, "fifo read error \n");
+		fprintf(stderr, "fifo read error \n");
 	
 	fflush(stdout);
 	close(fd);
@@ -268,8 +268,8 @@ int main(int argc, char *argv[]){
 		// We should know whether we're in INTRO_ACK or INTRO_WAIT before we come here. 
 			case INTRO_ACK:
 				// Send ACK.
-				fprintf(stdout, "Send Intro ACK\n");
-				fflush(stdout);
+				//fprintf(stdout, "Send Intro ACK\n");
+				//fflush(stdout);
 				msg = create_message(ACK_MSG, name, name, seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -293,7 +293,7 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stdout, "Timeout waiting for Introduction from server.\r\n");
+					fprintf(stderr, "Timeout waiting for Introduction from server.\r\n");
 					fflush(stdout);
 					state = CHAT;
 				}
@@ -329,7 +329,7 @@ int main(int argc, char *argv[]){
 								state = CHAT;
 								break;
 							default:
-								fprintf(stdout, "unknown message recieved \n");
+								fprintf(stderr, "unknown message recieved \n");
 								fflush(stdout);
 						}
 					}
@@ -390,14 +390,14 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stdout, "Timeout waiting for Chat ACK from server.\r\n");
+					fprintf(stderr, "Timeout waiting for Chat ACK from server.\r\n");
 					fflush(stdout);
 					state = CHAT;
 				}
 				break;
 			case CHAT_ACK:
-				fprintf(stdout, "Send Chat ACK\n");
-				fflush(stdout);
+				//fprintf(stdout, "Send Chat ACK\n");
+				//fflush(stdout);
 				char buf[20];
 				snprintf(buf, sizeof(buf), "%d", msg.sequence_number);
 				msg = create_message(ACK_MSG, name, buf, seq_num++);
@@ -405,8 +405,8 @@ int main(int argc, char *argv[]){
 				state = CHAT;
 				break;
 			case PROBE_ACK:
-				fprintf(stdout, "Send Probe ACK\n");
-				fflush(stdout);
+				//fprintf(stdout, "Send Probe ACK\n");
+				//fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -430,14 +430,14 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stdout, "Timeout waiting for Probe ACK from server.\r\n");
+					fprintf(stderr, "Timeout waiting for Probe ACK from server.\r\n");
 					fflush(stdout);
 					state = CHAT;
 				}
 				break;
 			case CHANGE_NAME_ACK:
-				fprintf(stdout, "Send Name Change ACK\n");
-				fflush(stdout);
+				//fprintf(stdout, "Send Name Change ACK\n");
+				//fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				state = CHAT;
@@ -457,7 +457,7 @@ int main(int argc, char *argv[]){
 					}
 				}
 				if (state != CHAT){
-					fprintf(stdout, "Timeout waiting for Name Change ACK from server.\r\n");
+					fprintf(stderr, "Timeout waiting for Name Change ACK from server.\r\n");
 					fflush(stdout);
 					state = CHAT;
 				}
@@ -478,25 +478,28 @@ int main(int argc, char *argv[]){
 						}
 					}
 				}
-				fprintf(stdout, "Timeout waiting for Goodbye ACK from server.\r\n");
+				fprintf(stderr, "Timeout waiting for Goodbye ACK from server.\r\n");
 				fflush(stdout);
 				// Doesn't matter because we die regardless. :((
 				break;
 			case GOODBYE_ACK:
-				fprintf(stdout, "Send Goodbye ACK\n");
+				//fprintf(stdout, "Send Goodbye ACK\n");
+				fprintf(stdout, "Goodbye");
 				fflush(stdout);
 				msg = create_message(ACK_MSG, name, "", seq_num++);
 				send(s, &msg, sizeof(message_t), 0);
 				break;
 			default:
-				fprintf(stdout, "Unknown state, going back to chat");
+				fprintf(stderr, "Unknown state, going back to chat");
 				fflush(stdout);
 				state = CHAT;
 		}
 		if (state == GOODBYE_WAIT || state == GOODBYE_ACK) break;
 	}
+	pthread_cancel(thread);
 	pthread_join(thread, NULL);
 	close(fd);
 	fprintf(stdout, "End of line.");
+	fflush(stdout);
 	return 0;
 }
